@@ -141,6 +141,8 @@ public class BrokerConfig extends BrokerIdentity {
 
     private boolean slaveReadEnable = false;
 
+    private boolean enableRouteChangeNotification = false;
+
     private boolean disableConsumeIfConsumerReadSlowly = false;
     private long consumerFallbehindThreshold = 1024L * 1024 * 1024 * 16;
 
@@ -747,6 +749,14 @@ public class BrokerConfig extends BrokerIdentity {
 
     public void setSlaveReadEnable(final boolean slaveReadEnable) {
         this.slaveReadEnable = slaveReadEnable;
+    }
+
+    public boolean isEnableRouteChangeNotification() {
+        return enableRouteChangeNotification;
+    }
+
+    public void setEnableRouteChangeNotification(final boolean enableRouteChangeNotification) {
+        this.enableRouteChangeNotification = enableRouteChangeNotification;
     }
 
     public int getRegisterBrokerTimeoutMills() {

@@ -80,6 +80,8 @@ import org.apache.rocketmq.broker.processor.QueryMessageProcessor;
 import org.apache.rocketmq.broker.processor.RecallMessageProcessor;
 import org.apache.rocketmq.broker.processor.ReplyMessageProcessor;
 import org.apache.rocketmq.broker.processor.SendMessageProcessor;
+import org.apache.rocketmq.broker.route.RouteEventService;
+import org.apache.rocketmq.broker.route.RouteEventType;
 import org.apache.rocketmq.broker.schedule.ScheduleMessageService;
 import org.apache.rocketmq.broker.slave.SlaveSynchronize;
 import org.apache.rocketmq.broker.subscription.LmqSubscriptionGroupManager;
@@ -300,6 +302,7 @@ public class BrokerController {
     private TransactionMetricsFlushService transactionMetricsFlushService;
     private AuthenticationMetadataManager authenticationMetadataManager;
     private AuthorizationMetadataManager authorizationMetadataManager;
+    protected RouteEventService routeEventService;
 
     private ConfigContext configContext;
 
@@ -470,6 +473,8 @@ public class BrokerController {
         if (this.authConfig != null && this.authConfig.isMigrateAuthFromV1Enabled()) {
             new AuthMigrator(this.authConfig).migrate();
         }
+        
+        this.routeEventService = new RouteEventService(this);
     }
 
     public AuthConfig getAuthConfig() {
@@ -1317,6 +1322,10 @@ public class BrokerController {
         this.messageStore = messageStore;
     }
 
+    public RouteEventService getRouteEventService() {
+        return routeEventService;
+    }
+
     protected void printMasterAndSlaveDiff() {
         if (messageStore.getHaService() != null && messageStore.getHaService().getConnectionCount().get() > 0) {
             long diff = this.messageStore.slaveFallBehindMuch();
@@ -1414,6 +1423,10 @@ public class BrokerController {
         shutdown = true;
 
         this.unregisterBrokerAll();
+
+        if (this.routeEventService != null) {
+            this.routeEventService.publishEvent(RouteEventType.SHUTDOWN);
+        }
 
         if (this.shutdownHook != null) {
             this.shutdownHook.beforeShutdown(this);
@@ -1812,6 +1825,10 @@ public class BrokerController {
         if (!isIsolated && !this.messageStoreConfig.isEnableDLegerCommitLog() && !this.messageStoreConfig.isDuplicationEnable()) {
             changeSpecialServiceStatus(this.brokerConfig.getBrokerId() == MixAll.MASTER_ID);
             this.registerBrokerAll(true, false, true);
+            if (this.routeEventService != null) {
+                this.routeEventService.publishEvent(RouteEventType.START);
+            }
+
         }
 
         scheduledFutures.add(this.scheduledExecutorService.scheduleAtFixedRate(new AbstractBrokerRunnable(this.getBrokerIdentity()) {
@@ -1866,6 +1883,7 @@ public class BrokerController {
                 }
             }
         }, 10, 5, TimeUnit.SECONDS);
+
     }
 
     protected void scheduleSendHeartbeat() {
